@@ -1,16 +1,46 @@
 import streamlit as st
-from supabase import create_client, Client
+import requests
+import json
 
-supabase_url = st.secrets["SUPABASE_URL"]
-supabase_key = st.secrets["SUPABASE_KEY"]
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
-supabase: Client = create_client(
-    supabase_url,
-    supabase_key,
-    headers={
-        "apikey": supabase_key
-    }
-)
+HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Content-Type": "application/json"
+}
+
+# ---------------------- 封装函数 ----------------------
+def supabase_select(table_name: str, eq_col: str = None, eq_val=None):
+    """查询
+    eq_col、eq_val：可选，等于筛选，例如 eq_col="id", eq_val=1
+    """
+    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
+    params = {}
+    if eq_col is not None:
+        params[eq_col] = f"eq.{eq_val}"
+    resp = requests.get(url, headers=HEADERS, params=params)
+    return resp.json()
+
+def supabase_insert(table_name: str, data: dict):
+    """新增一行，data是字典，对应表里字段"""
+    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
+    resp = requests.post(url, headers=HEADERS, data=json.dumps(data))
+    return resp.json()
+
+def supabase_update(table_name: str, match_col: str, match_val, update_data: dict):
+    """更新：match_col=匹配条件字段，update_data要修改的字段字典"""
+    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
+    params = {match_col: f"eq.{match_val}"}
+    resp = requests.patch(url, headers=HEADERS, params=params, data=json.dumps(update_data))
+    return resp.json()
+
+def supabase_delete(table_name: str, match_col: str, match_val):
+    """删除一行"""
+    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
+    params = {match_col: f"eq.{match_val}"}
+    resp = requests.delete(url, headers=HEADERS, params=params)
+    return resp.json()
 
 # 新增笔记
 def add_note(title: str, content: str, tags: str = ""):
