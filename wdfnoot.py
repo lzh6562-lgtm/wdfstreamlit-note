@@ -254,9 +254,9 @@ elif mode == "全局目录":
                     st.markdown(f'<div class="note-meta">创建: {created} | 更新: {updated} {tag_html}</div>', unsafe_allow_html=True)
                     preview = content[:180] + "..." if len(content) > 180 else content
                     st.markdown(preview)
-                    files = get_files(note_id)
-                    if files:
-                        st.caption(f"📎 附件 {len(files)} 个")
+                    #files = get_files(note_id)
+                    #if files:
+                    #    st.caption(f"📎 附件 {len(files)} 个")
                 with col2:
                     if st.button("查看详情", key=f"view_{note_id}"):
                         st.session_state["view_id"] = note_id
