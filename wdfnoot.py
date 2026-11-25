@@ -315,7 +315,7 @@ elif mode == "编辑管理":
     if not notes:
         st.info("暂无笔记")
     else:
-        options = {f"{n['title']} (ID:{n['id']})": n[0] for n in notes}
+        options = {f"{n['title']} (ID:{n['id']})": n['id'] for n in notes}
         selected = st.selectbox("选择要操作的笔记", list(options.keys()))
         note_id = options[selected]
         note = get_note(note_id)
