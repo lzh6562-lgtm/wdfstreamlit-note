@@ -10,31 +10,10 @@ from typing import Optional, List, Tuple
 def init_db_memory():
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS notes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            content TEXT,
-            tags TEXT,
-            created_at TEXT,
-            updated_at TEXT
-        )
-    """)
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS files (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            note_id INTEGER,
-            filename TEXT,
-            filedata BLOB,
-            filetype TEXT,
-            uploaded_at TEXT,
-            FOREIGN KEY (note_id) REFERENCES notes (id) ON DELETE CASCADE
-        )
-    """)
+    
     conn.commit()
     return conn
 
-conn = init_db_memory()
 
 # ==================== 数据库操作（内存版，文件存在BLOB字段） ====================
 def add_note(title: str, content: str, tags: str = "") -> int:
