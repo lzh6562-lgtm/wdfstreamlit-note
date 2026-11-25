@@ -117,6 +117,27 @@ def supabase_delete(table_name: str, filter_col: str, filter_val):
         print(f"DELETE EXCEPTION: {e}")
         return None
 
+def search_notes(keyword: str):
+    url = f"{SUPABASE_URL}/rest/v1/notes"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}"
+    }
+    params = {
+        "title": f"ilike.%{keyword}%",
+        "content": f"ilike.%{keyword}%",
+        "or": "(title,content)"
+    }
+    try:
+        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        if resp.status_code >=400:
+            print(f"SEARCH ERR {resp.status_code}:{resp.text}")
+            return []
+        return resp.json()
+    except Exception as e:
+        print(f"SEARCH EXC:{e}")
+        return []
+
 # 新增笔记
 def add_note(title: str, content: str, tags: str = ""):
     data = {
@@ -341,7 +362,12 @@ elif mode == "精准检索":
             results = search__by_title_exact(keyword)
         st.write(f"找到 **{len(results)}** 条结果")
         for note in results:
-            note_id, title, content, tags, created_at, updated_at = note
+            note_id=note["id"]
+            title=note["title"]
+            content=note["content"]
+            tags=note["tags"]
+            created_at=note["created_at"]
+            updated_at=note["updated_at"]
             with st.expander(f"📌 {title} （更新于 {updated_at}）"):
                 st.caption(f"标签: {tags or '无'} | 创建: {created_at}")
                 st.markdown(content or "_无正文_")
