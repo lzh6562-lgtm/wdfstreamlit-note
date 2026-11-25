@@ -74,12 +74,31 @@ def supabase_update(table_name: str, filter_col: str, filter_val, data: dict):
         print(f"UPDATE EXCEPTION: {e}")
         return None
 
-def supabase_select(table_name: str, match: dict = None):
-    q = supabase.table(table_name).select("*")
-    if match:
-        q = q.match(match)
-    res = q.execute()
-    return res.data
+def supabase_select(table_name: str, filter_col: str = None, filter_val=None, order_col: str = None, desc: bool = False):
+    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}"
+    }
+    params = {}
+    # 过滤条件
+    if filter_col is not None:
+        params[filter_col] = f"eq.{filter_val}"
+    # 排序
+    if order_col is not None:
+        if desc:
+            params["order"] = f"{order_col}.desc"
+        else:
+            params["order"] = f"{order_col}.asc"
+    try:
+        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        if resp.status_code >= 400:
+            print(f"SELECT ERR {resp.status_code}: {resp.text}")
+            return []
+        return resp.json()
+    except Exception as e:
+        print(f"SELECT EXCEPTION: {e}")
+        return []
 
 def supabase_delete(table_name: str, filter_col: str, filter_val):
     url = f"{SUPABASE_URL}/rest/v1/{table_name}"
@@ -154,8 +173,8 @@ def add_note(title: str, content: str, tags: str = ""):
     return res_data[0]["id"] if res_data else None
 
 def get_all_notes():
-    res_data = supabase_select("notes", order_col="created_at", desc=True)
-    return res_data
+    note_list = supabase_select("notes", order_col="created_at", desc=True)
+    return note_list
 
 def get_note(note_id: int):
     res_data = supabase_select("notes", eq_col="id", eq_val=note_id)
