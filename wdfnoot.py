@@ -74,6 +74,12 @@ def supabase_update(table_name: str, filter_col: str, filter_val, data: dict):
         print(f"UPDATE EXCEPTION: {e}")
         return None
 
+def supabase_select(table_name: str, match: dict = None):
+    q = supabase.table(table_name).select("*")
+    if match:
+        q = q.match(match)
+    res = q.execute()
+    return res.data
 
 def supabase_delete(table_name: str, filter_col: str, filter_val):
     url = f"{SUPABASE_URL}/rest/v1/{table_name}"
