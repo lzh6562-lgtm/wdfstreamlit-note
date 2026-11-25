@@ -321,9 +321,9 @@ elif mode == "编辑管理":
         note = get_note(note_id)
         if note:
             with st.form("edit_form"):
-                new_title = st.text_input("标题", value=note[1])
-                new_content = st.text_area("内容", value=note[2] or "", height=250)
-                new_tags = st.text_input("标签", value=note[3] or "")
+                new_title = st.text_input("标题", value=note["title"])
+                new_content = st.text_area("内容", value=note["content"] or "", height=250)
+                new_tags = st.text_input("标签", value=note["tags"] or "")
                 col_a, col_b = st.columns(2)
                 with col_a:
                     if st.form_submit_button("保存修改", type="primary"):
