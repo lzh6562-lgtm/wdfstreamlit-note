@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Optional, List, Tuple
 
 # ========== 云环境适配：全部放到内存数据库，不写本地磁盘 ==========
-# ❗ 重启应用所有数据全部丢失，仅用于界面演示！
 def init_db_memory():
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     c = conn.cursor()
@@ -16,86 +15,46 @@ def init_db_memory():
 
 
 # ==================== 数据库操作（内存版，文件存在BLOB字段） ====================
-def add_note(title: str, content: str, tags: str = "") -> int:
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO notes (title, content, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-        (title.strip(), content, tags.strip(), now, now)
-    )
-    conn.commit()
-    return c.lastrowid
+from supabase import create_client, Client
+import streamlit as st
+
+# 初始化supabase（放在文件最上方）
+supabase_url = st.secrets["SUPABASE_URL"]
+supabase_key = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(supabase_url, supabase_key)
+
+
+def add_note(title: str, content: str, tags: str = ""):
+    data = {
+        "title": title.strip(),
+        "content": content,
+        "tags": tags.strip()
+    }
+    res = supabase.table("notes").insert(data).execute()
+    return res.data[0]["id"] if res.data else None
+
+
+def get_all_notes():
+    res = supabase.table("notes").select("*").order("created_at", desc=True).execute()
+    return res.data
+
+
+def get_note(note_id: int):
+    res = supabase.table("notes").select("*").eq("id", note_id).execute()
+    return res.data[0] if res.data else None
+
 
 def update_note(note_id: int, title: str, content: str, tags: str = ""):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    c = conn.cursor()
-    c.execute(
-        "UPDATE notes SET title=?, content=?, tags=?, updated_at=? WHERE id=?",
-        (title.strip(), content, tags.strip(), now, note_id)
-    )
-    conn.commit()
+    data = {
+        "title": title.strip(),
+        "content": content,
+        "tags": tags.strip()
+    }
+    supabase.table("notes").update(data).eq("id", note_id).execute()
+
 
 def delete_note(note_id: int):
-    c = conn.cursor()
-    c.execute("DELETE FROM files WHERE note_id=?", (note_id,))
-    c.execute("DELETE FROM notes WHERE id=?", (note_id,))
-    conn.commit()
-
-def get_all_notes() -> List[Tuple]:
-    c = conn.cursor()
-    c.execute("SELECT id, title, content, tags, created_at, updated_at FROM notes ORDER BY updated_at DESC")
-    return c.fetchall()
-
-def get_note(note_id: int) -> Optional[Tuple]:
-    c = conn.cursor()
-    c.execute("SELECT id, title, content, tags, created_at, updated_at FROM notes WHERE id=?", (note_id,))
-    return c.fetchone()
-
-def search_notes(keyword: str) -> List[Tuple]:
-    keyword = f"%{keyword.strip()}%"
-    c = conn.cursor()
-    c.execute("""
-        SELECT id, title, content, tags, created_at, updated_at 
-        FROM notes 
-        WHERE title LIKE ? OR content LIKE ? OR tags LIKE ?
-        ORDER BY updated_at DESC
-    """, (keyword, keyword, keyword))
-    return c.fetchall()
-
-def search_by_title_exact(title: str) -> List[Tuple]:
-    c = conn.cursor()
-    c.execute("""
-        SELECT id, title, content, tags, created_at, updated_at 
-        FROM notes WHERE title = ?
-        ORDER BY updated_at DESC
-    """, (title.strip(),))
-    return c.fetchall()
-
-def add_file_blob(note_id: int, uploaded_file) -> bool:
-    try:
-        file_bytes = uploaded_file.getbuffer()
-        filetype = uploaded_file.type or os.path.splitext(uploaded_file.name)[-1]
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        c = conn.cursor()
-        c.execute(
-            "INSERT INTO files (note_id, filename, filedata, filetype, uploaded_at) VALUES (?, ?, ?, ?, ?)",
-            (note_id, uploaded_file.name, file_bytes, filetype, now)
-        )
-        conn.commit()
-        return True
-    except Exception as e:
-        st.error(f"附件保存失败: {e}")
-        return False
-
-def get_files(note_id: int) -> List[Tuple]:
-    c = conn.cursor()
-    c.execute("SELECT id, filename, filedata, filetype, uploaded_at FROM files WHERE note_id=?", (note_id,))
-    return c.fetchall()
-
-def delete_file(file_id: int):
-    c = conn.cursor()
-    c.execute("DELETE FROM files WHERE id=?", (file_id,))
-    conn.commit()
+    supabase.table("notes").delete().eq("id", note_id).execute()
 
 # ==================== 工具函数 ====================
 def get_blob_download_link(file_bytes: bytes, filename: str) -> str:
