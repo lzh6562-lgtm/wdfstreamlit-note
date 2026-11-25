@@ -92,6 +92,13 @@ def supabase_delete(table_name: str, filter_col: str, filter_val):
         print(f"DELETE EXCEPTION: {e}")
         return None
 
+def supabase_select(table_name: str, match: dict = None):
+    q = supabase.table(table_name).select("*")
+    if match:
+        q = q.match(match)
+    res = q.execute()
+    return res.data
+
 # 新增笔记
 def add_note(title: str, content: str, tags: str = ""):
     data = {
