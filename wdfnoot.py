@@ -1,20 +1,16 @@
 import streamlit as st
-import os
-import base64
-from datetime import datetime
-from typing import Optional, List, Tuple
-from supabase import create_client, ClientOptions
+from supabase import create_client, Client
 
 supabase_url = st.secrets["SUPABASE_URL"]
 supabase_key = st.secrets["SUPABASE_KEY"]
 
-supabase = create_client(
+supabase: Client = create_client(
     supabase_url,
-    options=ClientOptions(
-        api_key=supabase_key
-    )
+    supabase_key,
+    headers={
+        "apikey": supabase_key
+    }
 )
-st.success("✅连接成功")
 
 # 新增笔记
 def add_note(title: str, content: str, tags: str = ""):
