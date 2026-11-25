@@ -12,12 +12,11 @@ HEADERS = {
 
 # ---------------------- 封装函数 ----------------------
 def supabase_select(table_name: str, eq_col: str = None, eq_val=None, order_col: str = None, desc: bool = False):
-    """查询
-    eq_col、eq_val：等于筛选
-    order_col：排序字段
-    desc：是否倒序
-    """
     url = f"{SUPABASE_URL}/rest/v1/{table_name}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}"
+    }
     params = {}
     if eq_col is not None:
         params[eq_col] = f"eq.{eq_val}"
@@ -26,28 +25,72 @@ def supabase_select(table_name: str, eq_col: str = None, eq_val=None, order_col:
             params["order"] = f"{order_col}.desc"
         else:
             params["order"] = f"{order_col}.asc"
-    resp = requests.get(url, headers=HEADERS, params=params)
-    return resp.json()
+    try:
+        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        if resp.status_code >= 400:
+            print(f"SELECT ERR {resp.status_code}: {resp.text}")
+            return []
+        return resp.json()
+    except Exception as e:
+        print(f"SELECT EXCEPTION: {e}")
+        return []
+
 
 def supabase_insert(table_name: str, data: dict):
-    """新增一行，data是字典，对应表里字段"""
     url = f"{SUPABASE_URL}/rest/v1/{table_name}"
-    resp = requests.post(url, headers=HEADERS, data=json.dumps(data))
-    return resp.json()
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
+    }
+    try:
+        resp = requests.post(url, headers=headers, json=data, timeout=10)
+        if resp.status_code >= 400:
+            print(f"INSERT ERR {resp.status_code}: {resp.text}")
+            return None
+        return resp.json()
+    except Exception as e:
+        print(f"INSERT EXCEPTION: {e}")
+        return None
 
-def supabase_update(table_name: str, match_col: str, match_val, update_data: dict):
-    """更新：match_col=匹配条件字段，update_data要修改的字段字典"""
-    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
-    params = {match_col: f"eq.{match_val}"}
-    resp = requests.patch(url, headers=HEADERS, params=params, data=json.dumps(update_data))
-    return resp.json()
 
-def supabase_delete(table_name: str, match_col: str, match_val):
-    """删除一行"""
+def supabase_update(table_name: str, filter_col: str, filter_val, data: dict):
     url = f"{SUPABASE_URL}/rest/v1/{table_name}"
-    params = {match_col: f"eq.{match_val}"}
-    resp = requests.delete(url, headers=HEADERS, params=params)
-    return resp.json()
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
+    }
+    params = {filter_col: f"eq.{filter_val}"}
+    try:
+        resp = requests.patch(url, headers=headers, params=params, json=data, timeout=10)
+        if resp.status_code >= 400:
+            print(f"UPDATE ERR {resp.status_code}: {resp.text}")
+            return None
+        return resp.json()
+    except Exception as e:
+        print(f"UPDATE EXCEPTION: {e}")
+        return None
+
+
+def supabase_delete(table_name: str, filter_col: str, filter_val):
+    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}"
+    }
+    params = {filter_col: f"eq.{filter_val}"}
+    try:
+        resp = requests.delete(url, headers=headers, params=params, timeout=10)
+        if resp.status_code >= 400:
+            print(f"DELETE ERR {resp.status_code}: {resp.text}")
+            return None
+        return resp.json()
+    except Exception as e:
+        print(f"DELETE EXCEPTION: {e}")
+        return None
 
 # 新增笔记
 def add_note(title: str, content: str, tags: str = ""):
@@ -106,79 +149,37 @@ def delete_note(note_id: int):
     supabase_delete("notes", "id", note_id)
 
 # ==================== 工具函数 ====================
-def get_blob_download_link(file_bytes: bytes, filename: str) -> str:
-    b64 = base64.b64encode(file_bytes).decode()
-    return f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">下载 {filename}</a>'
+def get_all_notes():
+    note_list = supabase_select("notes", order_col="created_at", desc=True)
+    return note_list
 
-def render_file_preview(file_bytes: bytes, filename: str, filetype: str):
-    ext = os.path.splitext(filename)[-1].lower()
-    if ext in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"]:
-        st.image(file_bytes, caption=filename, use_container_width=True)
-    elif ext == ".pdf":
-        st.info(f"PDF 文件: {filename}（下载后本地打开）")
-        st.markdown(get_blob_download_link(file_bytes, filename), unsafe_allow_html=True)
-    elif ext in [".txt", ".md", ".py", ".json", ".csv"]:
-        try:
-            content = file_bytes.decode("utf-8", errors="ignore")
-            st.code(content[:5000] + ("..." if len(content) > 5000 else ""), language="text")
-        except Exception:
-            st.warning("无法预览文本")
-    else:
-        st.info(f"附件: {filename}")
-        st.markdown(get_blob_download_link(file_bytes, filename), unsafe_allow_html=True)
+def get_note(note_id: int):
+    res_data = supabase_select("notes", eq_col="id", eq_val=note_id)
+    return res_data[0] if res_data else None
 
-# ==================== 页面配置 ====================
-st.set_page_config(
-    page_title="本地智能笔记【云演示版】",
-    page_icon="📝",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+def add_note(title: str, content: str, tags: str = ""):
+    data = {
+        "title": title.strip(),
+        "content": content,
+        "tags": tags.strip()
+    }
+    res_data = supabase_insert("notes", data)
+    if res_data is None:
+        st.error("新增笔记失败！")
+        return None
+    return res_data[0]["id"]
 
+def update_note(note_id: int, title: str, content: str, tags: str = ""):
+    data = {
+        "title": title.strip(),
+        "content": content,
+        "tags": tags.strip()
+    }
+    return supabase_update("notes", "id", note_id, data)
 
-st.markdown("""
-<style>
-    .stApp {
-        background-color: #f7f9fc;
-    }
-    .main-header {
-        font-size: 1.8rem;
-        font-weight: 600;
-        color: #1e3a5f;
-        margin-bottom: 0.5rem;
-    }
-    .note-card {
-        background: white;
-        padding: 1rem 1.2rem;
-        border-radius: 10px;
-        border: 1px solid #e1e8ed;
-        margin-bottom: 0.8rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    }
-    .note-title {
-        font-size: 1.15rem;
-        font-weight: 600;
-        color: #1a365d;
-        margin-bottom: 0.3rem;
-    }
-    .note-meta {
-        font-size: 0.8rem;
-        color: #718096;
-        margin-bottom: 0.5rem;
-    }
-    .tag {
-        background: #ebf8ff;
-        color: #2b6cb0;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        margin-right: 4px;
-    }
-    div[data-testid="stSidebar"] {
-        background-color: #edf2f7;
-    }
-</style>
-""", unsafe_allow_html=True)
+def delete_note(note_id: int):
+    return supabase_delete("notes", "id", note_id)
+
 
 # ==================== 侧边栏 ====================
 with st.sidebar:
