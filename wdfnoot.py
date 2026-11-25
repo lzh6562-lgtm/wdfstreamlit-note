@@ -266,9 +266,9 @@ elif mode == "全局目录":
             if note:
                 st.divider()
                 st.subheader(f"📄 {note['title']}")
-                st.caption(f"创建: {note[4]} | 更新: {note[5]} | 标签: {note[3] or '无'}")
-                st.markdown(note[2] or "_无正文_")
-                files = get_files(note[0])
+                st.caption(f"创建: {note['created_at']} | 更新: {note['updated_at']} | 标签: {note['tags'] or '无'}")
+                st.markdown(note['content'] or "_无正文_")
+                files = get_files(note['id'])
                 if files:
                     st.markdown("**附件：**")
                     for fid, fname, fbytes, ftype, _ in files:
