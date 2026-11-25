@@ -258,14 +258,14 @@ elif mode == "全局目录":
                     #if files:
                     #    st.caption(f"📎 附件 {len(files)} 个")
                 with col2:
-                    if st.button("查看详情", key=f"view_{note_id}"):
+                    if st.button("查看详情",key=f"view_{note_id}"):
                         st.session_state["view_id"] = note_id
                 st.markdown('</div>', unsafe_allow_html=True)
         if "view_id" in st.session_state:
             note = get_note(st.session_state["view_id"])
             if note:
                 st.divider()
-                st.subheader(f"📄 {note[1]}")
+                st.subheader(f"📄 {note['title']}")
                 st.caption(f"创建: {note[4]} | 更新: {note[5]} | 标签: {note[3] or '无'}")
                 st.markdown(note[2] or "_无正文_")
                 files = get_files(note[0])
