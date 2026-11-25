@@ -145,10 +145,10 @@ def add_file(note_id: int, file_name: str, file_type: str, file_data: bytes):
 
 def get_files(note_id: int):
     """根据笔记id读取全部附件，返回字典列表"""
-    return supabase_select("files", match={"note_id": note_id})
+    return supabase_select("files"_col="note_id", filter_val=note_id)
 
 def delete_file(file_id: int):
-    supabase_delete("files", match={"id": file_id})
+    return supabase_delete("files", "id",file_id)
 
 # 修改笔记
 def update_note(note_id: int, title: str, content: str, tags: str = ""):
@@ -393,4 +393,3 @@ if new_files and st.button("上传附件"):
     st.rerun()
 
 st.divider()
-st.caption("⚠️云演示环境，刷新/重启全部数据丢失；本地运行原版代码可以永久保存在电脑磁盘")
