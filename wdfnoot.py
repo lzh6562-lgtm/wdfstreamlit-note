@@ -359,13 +359,13 @@ elif mode == "编辑管理":
         else:
             st.write("暂无附件")
 
-        st.markdown("**追加附件**")
-            new_files = st.file_uploader("选择文件", accept_multiple_files=True, key="append_files")
-            if new_files and st.button("上传附件"):
-                for f in new_files:
-                    add_file_blob(note_id, f)
-                st.success("附件已添加")
-                st.rerun()
+st.markdown("**追加附件**")
+new_files = st.file_uploader("选择文件", accept_multiple_files=True, key="append_files")
+if new_files and st.button("上传附件"):
+    for f in new_files:
+        add_file_blob(note_id, f)
+    st.success("附件已添加")
+    st.rerun()
 
 st.divider()
 st.caption("⚠️云演示环境，刷新/重启全部数据丢失；本地运行原版代码可以永久保存在电脑磁盘")
