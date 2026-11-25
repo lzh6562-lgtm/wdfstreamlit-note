@@ -124,18 +124,17 @@ def search_notes(keyword: str):
         "Authorization": f"Bearer {SUPABASE_KEY}"
     }
     params = {
-        "title": f"ilike.%{keyword}%",
-        "content": f"ilike.%{keyword}%",
-        "or": "(title,content)"
+        "or": f"(title.ilike.%{keyword}%,content.ilike.%{keyword}%)"
     }
     try:
         resp = requests.get(url, headers=headers, params=params, timeout=10)
-        if resp.status_code >=400:
-            print(f"SEARCH ERR {resp.status_code}:{resp.text}")
+        print(f"模糊搜索 status={resp.status_code}, 返回内容={resp.text}")
+        if resp.status_code >= 400:
+            print(f"模糊搜索接口报错：{resp.text}")
             return []
         return resp.json()
     except Exception as e:
-        print(f"SEARCH EXC:{e}")
+        print(f"模糊搜索异常: {e}")
         return []
 
 # 新增笔记
