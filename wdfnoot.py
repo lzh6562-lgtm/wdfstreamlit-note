@@ -371,9 +371,9 @@ elif mode == "编辑管理":
                 if st.button("删除", key=f"del_f_{fid}"):
                     delete_file(fid)
                     st.rerun()
-            else:
-                st.caption("无附件")
-            st.markdown("**追加附件**")
+        else:
+            st.caption("无附件")
+        st.markdown("**追加附件**")
             new_files = st.file_uploader("选择文件", accept_multiple_files=True, key="append_files")
             if new_files and st.button("上传附件"):
                 for f in new_files:
