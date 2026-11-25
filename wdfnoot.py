@@ -3,18 +3,19 @@ import os
 import base64
 from datetime import datetime
 from typing import Optional, List, Tuple
-from supabase import create_client, Client
+from supabase import create_client, ClientOptions
 
-# ========== 云环境适配：全部放到内存数据库，不写本地磁盘 ==========
-
-# ==================== 数据库操作（内存版，文件存在BLOB字段） ====================
-from supabase import create_client, Client
-import streamlit as st
-
-# 初始化supabase（放在文件最上方）
 supabase_url = st.secrets["SUPABASE_URL"]
 supabase_key = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(supabase_url, supabase_key)
+
+supabase = create_client(
+    supabase_url,
+    options=ClientOptions(
+        api_key=supabase_key
+    )
+)
+st.success("✅连接成功")
+
 # 新增笔记
 def add_note(title: str, content: str, tags: str = ""):
     data = {
