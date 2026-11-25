@@ -107,6 +107,24 @@ def get_notes():
     note_list = supabase_select("notes", order_col="created_at", desc=True)
     return note_list
 
+# 附件上传
+def add_file(note_id: int, file_name: str, file_type: str, file_data: bytes):
+    data = {
+        "note_id": note_id,
+        "file_name": file_name,
+        "file_type": file_type,
+        "file_data": file_data,
+    }
+    res = supabase_insert("files", data)
+    return res[0]["id"] if res else None
+
+def get_files(note_id: int):
+    """根据笔记id读取全部附件，返回字典列表"""
+    return supabase_select("files", match={"note_id": note_id})
+
+def delete_file(file_id: int):
+    supabase_delete("files", match={"id": file_id})
+
 # 修改笔记
 def update_note(note_id: int, title: str, content: str, tags: str = ""):
     data = {
@@ -318,28 +336,30 @@ elif mode == "编辑管理":
         options = {f"{n['title']} (ID:{n['id']})": n['id'] for n in notes}
         selected = st.selectbox("选择要操作的笔记", list(options.keys()))
         note_id = options[selected]
-        note = get_note(note_id)
-        if note:
-            with st.form("edit_form"):
-                new_title = st.text_input("标题", value=note["title"])
-                new_content = st.text_area("内容", value=note["content"] or "", height=250)
-                new_tags = st.text_input("标签", value=note["tags"] or "")
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    if st.form_submit_button("保存修改", type="primary"):
-                        update_note(note_id, new_title, new_content, new_tags)
-                        st.success("已更新")
-                        st.rerun()
-                with col_b:
-                    if st.form_submit_button("删除此笔记", type="secondary"):
-                        delete_note(note_id)
-                        st.success("已删除")
-                        st.rerun()
-            st.markdown("**当前附件**")
-            files = get_files(note_id)
-            if files:
-                for fid, fname, fbytes, ftype, uptime in files:
-                    c1, c2 = st.columns([6, 1])
+        st.markdown("**当前附件**")
+        files = get_files(note_id)
+        if files:
+             for f in files:
+                 c1, c2, c3 = st.columns([4,2,2])
+                 with c1:
+                     st.write(f["file_name"])
+                 with c2:
+                     # 下载按钮
+                     st.download_button(
+                         label="下载",
+                         data=f["file_data"],
+                         file_name=f["file_name"],
+                         mime=f["file_type"],
+                         key=f"dl_{f['id']}"
+                      )
+                   with c3:
+                       if st.button("删除附件", key=f"del_{f['id']}"):
+                            delete_file(f["id"])
+                            st.rerun()
+        else:
+            st.write("暂无附件")
+
+
                     with c1:
                         st.download_button(
                             label=f"📎 {fname} ({uptime}) - 点击查看/下载",
