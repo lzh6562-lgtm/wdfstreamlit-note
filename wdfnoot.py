@@ -233,10 +233,10 @@ elif mode == "全局目录":
     else:
         all_tags = set()
         for n in notes:
-    tag_str = n.get("tags", "")  # get兜底，tags为空/不存在不会崩
-    if tag_str:
-        for t in tag_str.split(","):
-            all_tags.add(t.strip())
+            tag_str = n.get("tags", "")  # get兜底，tags为空/不存在不会崩
+            if tag_str:
+                for t in tag_str.split(","):
+                    all_tags.add(t.strip())
         selected_tag = st.selectbox("按标签筛选（可选）", ["全部"] + sorted(list(all_tags)))
         for note in notes:
             note_id, title, content, tags, created, updated = note
