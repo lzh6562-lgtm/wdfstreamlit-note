@@ -1,18 +1,11 @@
 import streamlit as st
-import sqlite3
 import os
 import base64
 from datetime import datetime
 from typing import Optional, List, Tuple
+from supabase import create_client, Client
 
 # ========== 云环境适配：全部放到内存数据库，不写本地磁盘 ==========
-def init_db_memory():
-    conn = sqlite3.connect(":memory:", check_same_thread=False)
-    c = conn.cursor()
-    
-    conn.commit()
-    return conn
-
 
 # ==================== 数据库操作（内存版，文件存在BLOB字段） ====================
 from supabase import create_client, Client
@@ -22,7 +15,34 @@ import streamlit as st
 supabase_url = st.secrets["SUPABASE_URL"]
 supabase_key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(supabase_url, supabase_key)
+# 新增笔记
+def add_note(title: str, content: str, tags: str = ""):
+    data = {
+        "title": title.strip(),
+        "content": content,
+        "tags": tags.strip(),
+        "created_at": datetime.now().isoformat()
+    }
+    res = supabase.table("notes").insert(data).execute()
+    return res.data[0]["id"] if res.data else None
 
+# 查询全部笔记
+def get_notes():
+    res = supabase.table("notes").select("*").order("created_at", desc=True).execute()
+    return res.data
+
+# 修改笔记
+def update_note(note_id, title, content, tags=""):
+    data = {
+        "title": title.strip(),
+        "content": content,
+        "tags": tags.strip()
+    }
+    return supabase.table("notes").update(data).eq("id", note_id).execute()
+
+# 删除笔记
+def delete_note(note_id):
+    return supabase.table("notes").delete().eq("id", note_id).execute()
 
 def add_note(title: str, content: str, tags: str = ""):
     data = {
@@ -86,7 +106,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.warning("⚠️ 云演示版本：**重启/刷新网页全部笔记和附件会丢失，仅用来预览界面！如需永久保存需要外接数据库**")
 
 st.markdown("""
 <style>
