@@ -258,7 +258,7 @@ elif mode == "全局目录":
                     #if files:
                     #    st.caption(f"📎 附件 {len(files)} 个")
                 with col2:
-                    if st.button("查看详情",key=f"view_{note_id}"):
+                    if st.button("查看详情",key=f"view_{i}_{note_id}"):
                         st.session_state["view_id"] = note_id
                 st.markdown('</div>', unsafe_allow_html=True)
         if "view_id" in st.session_state:
