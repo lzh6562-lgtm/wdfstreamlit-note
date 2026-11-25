@@ -233,6 +233,47 @@ def add_note(title: str, content: str, tags: str = ""):
         return None
     return res_data[0]["id"]
 
+def search_by_title_exact(keyword: str):
+    url = f"{SUPABASE_URL}/rest/v1/notes"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}"
+    }
+    params = {
+        "title": f"eq.{keyword}"
+    }
+    try:
+        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        print(f"精确搜索返回：{resp.status_code}, {resp.text}") # 加打印，调试看返回
+        if resp.status_code >= 400:
+            return []
+        return resp.json()
+    except Exception as e:
+        print(f"精确搜索异常: {e}")
+        return []
+
+def search_notes(keyword: str):
+    url = f"{SUPABASE_URL}/rest/v1/notes"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}"
+    }
+    # ✅ Supabase正确or语法：or=(title.ilike,content.ilike)
+    params = {
+        "or": "(title.ilike,content.ilike)",
+        "title": f"%{keyword}%",
+        "content": f"%{keyword}%"
+    }
+    try:
+        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        print(f"模糊搜索返回：{resp.status_code}, {resp.text}") # 调试打印
+        if resp.status_code >= 400:
+            return []
+        return resp.json()
+    except Exception as e:
+        print(f"模糊搜索异常: {e}")
+        return []
+
 def update_note(note_id: int, title: str, content: str, tags: str = ""):
     data = {
         "title": title.strip(),
