@@ -256,7 +256,7 @@ elif mode == "全局目录":
                     if tags:
                         for t in tags.split(","):
                             tag_html += f'<span class="tag">{t.strip()}</span>'
-                    st.markdown(f'<div class="note-meta">创建: {created} | 更新: {updated} {tag_html}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="note-meta">创建: {created_at} | 更新: {updated_at} {tag_html}</div>', unsafe_allow_html=True)
                     preview = content[:180] + "..." if len(content) > 180 else content
                     st.markdown(preview)
                     #files = get_files(note_id)
@@ -298,9 +298,9 @@ elif mode == "精准检索":
             results = search_notes(keyword)
         st.write(f"找到 **{len(results)}** 条结果")
         for note in results:
-            note_id, title, content, tags, created, updated = note
-            with st.expander(f"📌 {title} （更新于 {updated}）"):
-                st.caption(f"标签: {tags or '无'} | 创建: {created}")
+            note_id, title, content, tags, created_at, updated_at = note
+            with st.expander(f"📌 {title} （更新于 {updated_at}）"):
+                st.caption(f"标签: {tags or '无'} | 创建: {created_at}")
                 st.markdown(content or "_无正文_")
                 files = get_files(note_id)
                 if files:
