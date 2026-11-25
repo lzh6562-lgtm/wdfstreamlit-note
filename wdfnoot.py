@@ -145,7 +145,7 @@ def add_file(note_id: int, file_name: str, file_type: str, file_data: bytes):
 
 def get_files(note_id: int):
     """根据笔记id读取全部附件，返回字典列表"""
-    return supabase_select("files"_col="note_id", filter_val=note_id)
+    return supabase_select("files",filter_col="note_id", filter_val=note_id)
 
 def delete_file(file_id: int):
     return supabase_delete("files", "id",file_id)
