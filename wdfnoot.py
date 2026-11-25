@@ -360,20 +360,20 @@ elif mode == "编辑管理":
             st.write("暂无附件")
 
 
-                    with c1:
-                        st.download_button(
-                            label=f"📎 {fname} ({uptime}) - 点击查看/下载",
-                            data=fbytes,
-                            file_name=fname,
-                            key=f"dl_{fid}"
-                        )
-                    with c2:
-                        if st.button("删除", key=f"del_f_{fid}"):
-                            delete_file(fid)
-                            st.rerun()
-            else:
-                st.caption("无附件")
-            st.markdown("**追加附件**")
+                with c1:
+                    st.download_button(
+                        label=f"📎 {fname} ({uptime}) - 点击查看/下载",
+                        data=fbytes,
+                        file_name=fname,
+                        key=f"dl_{fid}"
+                    )
+                with c2:
+                    if st.button("删除", key=f"del_f_{fid}"):
+                        delete_file(fid)
+                        st.rerun()
+                else:
+                    st.caption("无附件")
+                st.markdown("**追加附件**")
             new_files = st.file_uploader("选择文件", accept_multiple_files=True, key="append_files")
             if new_files and st.button("上传附件"):
                 for f in new_files:
