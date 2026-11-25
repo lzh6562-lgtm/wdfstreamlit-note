@@ -352,10 +352,10 @@ elif mode == "编辑管理":
                          mime=f["file_type"],
                          key=f"dl_{f['id']}"
                       )
-                   with c3:
-                       if st.button("删除附件", key=f"del_{f['id']}"):
-                            delete_file(f["id"])
-                            st.rerun()
+                 with c3:
+                    if st.button("删除附件", key=f"del_{f['id']}"):
+                         delete_file(f["id"])
+                         st.rerun()
         else:
             st.write("暂无附件")
 
