@@ -55,8 +55,6 @@ def add_note(title: str, content: str, tags: str = ""):
         "title": title.strip(),
         "content": content,
         "tags": tags.strip(),
-        "created_at": datetime.now().isoformat()
-    }
     res_data = supabase_insert("notes", data)
     return res_data[0]["id"] if res_data else None
 
