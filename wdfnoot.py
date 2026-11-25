@@ -359,7 +359,7 @@ elif mode == "精准检索":
         if exact:
             results = search_by_title_exact(keyword)
         else:
-            results = search__by_title_exact(keyword)
+            results = search_notes(keyword)
         st.write(f"找到 **{len(results)}** 条结果")
         for note in results:
             note_id=note["id"]
