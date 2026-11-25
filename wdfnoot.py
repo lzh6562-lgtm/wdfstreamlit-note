@@ -256,7 +256,7 @@ elif mode == "全局目录":
                     if tags:
                         for t in tags.split(","):
                             tag_html += f'<span class="tag">{t.strip()}</span>'
-                    st.markdown(f'<div class="note-meta">创建: {created_at} | 更新: {updated_at} {tag_html}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="note-meta">创建: {note["created_at"]} | 更新: {note["updated_at"]} {tag_html}</div>', unsafe_allow_html=True)
                     preview = content[:180] + "..." if len(content) > 180 else content
                     st.markdown(preview)
                     #files = get_files(note_id)
