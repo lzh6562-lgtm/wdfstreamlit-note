@@ -339,20 +339,20 @@ elif mode == "编辑管理":
         st.markdown("**当前附件**")
         files = get_files(note_id)
         if files:
-             for f in files:
-                 c1, c2, c3 = st.columns([4,2,2])
-                 with c1:
-                     st.write(f["file_name"])
-                 with c2:
-                     # 下载按钮
-                     st.download_button(
-                         label="下载",
-                         data=f["file_data"],
-                         file_name=f["file_name"],
-                         mime=f["file_type"],
-                         key=f"dl_{f['id']}"
+            for f in files:
+                c1, c2, c3 = st.columns([4,2,2])
+                with c1:
+                    st.write(f["file_name"])
+                with c2:
+                    # 下载按钮
+                    st.download_button(
+                        label="下载",
+                        data=f["file_data"],
+                        file_name=f["file_name"],
+                        mime=f["file_type"],
+                        key=f"dl_{f['id']}"
                       )
-                 with c3:
+                with c3:
                     if st.button("删除附件", key=f"del_{f['id']}"):
                          delete_file(f["id"])
                          st.rerun()
