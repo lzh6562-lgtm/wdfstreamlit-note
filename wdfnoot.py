@@ -11,14 +11,21 @@ HEADERS = {
 }
 
 # ---------------------- 封装函数 ----------------------
-def supabase_select(table_name: str, eq_col: str = None, eq_val=None):
+def supabase_select(table_name: str, eq_col: str = None, eq_val=None, order_col: str = None, desc: bool = False):
     """查询
-    eq_col、eq_val：可选，等于筛选，例如 eq_col="id", eq_val=1
+    eq_col、eq_val：等于筛选
+    order_col：排序字段
+    desc：是否倒序
     """
     url = f"{SUPABASE_URL}/rest/v1/{table_name}"
     params = {}
     if eq_col is not None:
         params[eq_col] = f"eq.{eq_val}"
+    if order_col is not None:
+        if desc:
+            params["order"] = f"{order_col}.desc"
+        else:
+            params["order"] = f"{order_col}.asc"
     resp = requests.get(url, headers=HEADERS, params=params)
     return resp.json()
 
@@ -50,26 +57,26 @@ def add_note(title: str, content: str, tags: str = ""):
         "tags": tags.strip(),
         "created_at": datetime.now().isoformat()
     }
-    res = supabase.table("notes").insert(data).execute()
-    return res.data[0]["id"] if res.data else None
+    res_data = supabase_insert("notes", data)
+    return res_data[0]["id"] if res_data else None
 
 # 查询全部笔记
 def get_notes():
-    res = supabase.table("notes").select("*").order("created_at", desc=True).execute()
-    return res.data
+    note_list = supabase_select("notes", order_col="created_at", desc=True)
+    return note_list
 
 # 修改笔记
-def update_note(note_id, title, content, tags=""):
+def update_note(note_id: int, title: str, content: str, tags: str = ""):
     data = {
         "title": title.strip(),
         "content": content,
         "tags": tags.strip()
     }
-    return supabase.table("notes").update(data).eq("id", note_id).execute()
+    supabase_update("notes", "id", note_id, data)
 
 # 删除笔记
-def delete_note(note_id):
-    return supabase.table("notes").delete().eq("id", note_id).execute()
+def delete_note(note_id: int):
+    return supabase_delete("notes", "id", note_id)
 
 def add_note(title: str, content: str, tags: str = ""):
     data = {
@@ -77,19 +84,16 @@ def add_note(title: str, content: str, tags: str = ""):
         "content": content,
         "tags": tags.strip()
     }
-    res = supabase.table("notes").insert(data).execute()
-    return res.data[0]["id"] if res.data else None
-
+    res_data = supabase_insert("notes", data)
+    return res_data[0]["id"] if res_data else None
 
 def get_all_notes():
-    res = supabase.table("notes").select("*").order("created_at", desc=True).execute()
-    return res.data
-
+    res_data = supabase_select("notes", order_col="created_at", desc=True)
+    return res_data
 
 def get_note(note_id: int):
-    res = supabase.table("notes").select("*").eq("id", note_id).execute()
-    return res.data[0] if res.data else None
-
+    res_data = supabase_select("notes", eq_col="id", eq_val=note_id)
+    return res_data[0] if res_data else None
 
 def update_note(note_id: int, title: str, content: str, tags: str = ""):
     data = {
@@ -97,11 +101,10 @@ def update_note(note_id: int, title: str, content: str, tags: str = ""):
         "content": content,
         "tags": tags.strip()
     }
-    supabase.table("notes").update(data).eq("id", note_id).execute()
-
+    supabase_update("notes", "id", note_id, data)
 
 def delete_note(note_id: int):
-    supabase.table("notes").delete().eq("id", note_id).execute()
+    supabase_delete("notes", "id", note_id)
 
 # ==================== 工具函数 ====================
 def get_blob_download_link(file_bytes: bytes, filename: str) -> str:
