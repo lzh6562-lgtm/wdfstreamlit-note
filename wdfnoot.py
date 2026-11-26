@@ -427,6 +427,23 @@ elif mode == "编辑管理":
         options = {f"{n['title']} (ID:{n['id']})": n['id'] for n in notes}
         selected = st.selectbox("选择要操作的笔记", list(options.keys()))
         note_id = options[selected]
+        note_data = get_note(note_id)
+        if note_data:
+            title_edit = st.text_input("笔记标题", value=note_data["title"])
+            content_edit = st.text_area("笔记内容", value=note_data["content"])
+            tags_edit = st.text_input("标签", value=note_data.get("tags",""))
+            if st.button("保存修改"):
+                update_note(note_id, title_edit, content_edit, tags_edit)
+                st.success("修改已保存")
+                st.rerun()
+
+            st.divider()
+            confirm_del = st.checkbox("⚠️ 确认永久删除本条笔记")
+            if confirm_del and st.button("🗑️ 删除笔记", type="secondary"):
+                delete_note(note_id)
+                st.success("笔记已删除！")
+                st.rerun()
+  
         st.markdown("**当前附件**")
         files = get_files(note_id)
         if files:
