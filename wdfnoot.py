@@ -217,8 +217,15 @@ def get_all_notes():
     return note_list
 
 def get_note(note_id: int):
-    res_data = supabase_select("notes", eq_col="id", eq_val=note_id)
-    return res_data[0] if res_data else None
+    res_data = supabase_select("notes")
+    if not res_data:
+        return None
+    for item in res_data:
+        if item["id"] == note_id:
+            return item
+    return None
+
+
 
 def add_note(title: str, content: str, tags: str = ""):
     data = {
