@@ -259,26 +259,29 @@ def search_by_title_exact(keyword: str):
         return []
 
 def search_notes(keyword: str):
+    if not keyword.strip():
+        return get_notes()
+        
     url = f"{SUPABASE_URL}/rest/v1/notes"
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}"
     }
-    # ✅ Supabase正确or语法：or=(title.ilike,content.ilike)
+    # 正确or语法：title.ilike.%xxx%,content.ilike.%xxx%
+    kw = keyword.replace("%", r"\%")
     params = {
-        "or": "(title.ilike,content.ilike)",
-        "title": f"%{keyword}%",
-        "content": f"%{keyword}%"
+        "or": f"title.ilike.%{kw}%,content.ilike.%{kw}%"
     }
     try:
         resp = requests.get(url, headers=headers, params=params, timeout=10)
-        print(f"模糊搜索返回：{resp.status_code}, {resp.text}") # 调试打印
+        print(f"模糊搜索返回: {resp.status_code}, {resp.text}")
         if resp.status_code >= 400:
             return []
         return resp.json()
     except Exception as e:
         print(f"模糊搜索异常: {e}")
         return []
+
 
 def update_note(note_id: int, title: str, content: str, tags: str = ""):
     data = {
