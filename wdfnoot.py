@@ -1,342 +1,255 @@
 import streamlit as st
 import requests
-import json
+import base64
+from typing import Optional, List, Dict, Any
 
+# ---------------------- Secrets ----------------------
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
-HEADERS = {
-    "apikey": SUPABASE_KEY,
-    "Content-Type": "application/json"
-}
-
-# ---------------------- 封装函数 ----------------------
-def supabase_select(table_name: str, eq_col: str = None, eq_val=None, order_col: str = None, desc: bool = False):
-    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}"
-    }
-    params = {}
-    if eq_col is not None:
-        params[eq_col] = f"eq.{eq_val}"
-    if order_col is not None:
-        if desc:
-            params["order"] = f"{order_col}.desc"
-        else:
-            params["order"] = f"{order_col}.asc"
-    try:
-        resp = requests.get(url, headers=headers, params=params, timeout=10)
-        if resp.status_code >= 400:
-            print(f"SELECT ERR {resp.status_code}: {resp.text}")
-            return []
-        return resp.json()
-    except Exception as e:
-        print(f"SELECT EXCEPTION: {e}")
-        return []
-
-
-def supabase_insert(table_name: str, data: dict):
-    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
-    headers = {
+# ---------------------- Core Supabase Helpers ----------------------
+def _headers(prefer: str = None) -> dict:
+    h = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
         "Content-Type": "application/json",
-        "Prefer": "return=representation"
     }
-    try:
-        resp = requests.post(url, headers=headers, json=data, timeout=10)
-        if resp.status_code >= 400:
-            print(f"INSERT ERR {resp.status_code}: {resp.text}")
-            return None
-        return resp.json()
-    except Exception as e:
-        print(f"INSERT EXCEPTION: {e}")
-        return None
+    if prefer:
+        h["Prefer"] = prefer
+    return h
 
 
-def supabase_update(table_name: str, filter_col: str, filter_val, data: dict):
-    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=representation"
-    }
-    params = {filter_col: f"eq.{filter_val}"}
-    try:
-        resp = requests.patch(url, headers=headers, params=params, json=data, timeout=10)
-        if resp.status_code >= 400:
-            print(f"UPDATE ERR {resp.status_code}: {resp.text}")
-            return None
-        return resp.json()
-    except Exception as e:
-        print(f"UPDATE EXCEPTION: {e}")
-        return None
-
-def supabase_select(table_name: str, filter_col: str = None, filter_val=None, order_col: str = None, desc: bool = False):
-    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}"
-    }
+def supabase_select(
+    table: str,
+    filter_col: str = None,
+    filter_val: Any = None,
+    order_col: str = None,
+    desc: bool = False,
+) -> List[dict]:
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
     params = {}
-    # 过滤条件
     if filter_col is not None:
         params[filter_col] = f"eq.{filter_val}"
-    # 排序
-    if order_col is not None:
-        if desc:
-            params["order"] = f"{order_col}.desc"
-        else:
-            params["order"] = f"{order_col}.asc"
+    if order_col:
+        params["order"] = f"{order_col}.{'desc' if desc else 'asc'}"
+
     try:
-        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        resp = requests.get(url, headers=_headers(), params=params, timeout=10)
         if resp.status_code >= 400:
-            print(f"SELECT ERR {resp.status_code}: {resp.text}")
+            st.error(f"SELECT error {resp.status_code}: {resp.text}")
             return []
         return resp.json()
     except Exception as e:
-        print(f"SELECT EXCEPTION: {e}")
+        st.error(f"SELECT exception: {e}")
         return []
 
-def supabase_delete(table_name: str, filter_col: str, filter_val):
-    url = f"{SUPABASE_URL}/rest/v1/{table_name}"
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}"
-    }
-    params = {filter_col: f"eq.{filter_val}"}
+
+def supabase_insert(table: str, data: dict) -> Optional[List[dict]]:
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
     try:
-        resp = requests.delete(url, headers=headers, params=params, timeout=10)
+        resp = requests.post(
+            url, headers=_headers("return=representation"), json=data, timeout=15
+        )
         if resp.status_code >= 400:
-            print(f"DELETE ERR {resp.status_code}: {resp.text}")
+            st.error(f"INSERT error {resp.status_code}: {resp.text}")
             return None
         return resp.json()
     except Exception as e:
-        print(f"DELETE EXCEPTION: {e}")
+        st.error(f"INSERT exception: {e}")
         return None
 
-def search_notes(keyword: str):
-    url = f"{SUPABASE_URL}/rest/v1/notes"
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}"
-    }
-    params = {
-        "or": f"(title.ilike.%{keyword}%,content.ilike.%{keyword}%)"
-    }
+
+def supabase_update(table: str, filter_col: str, filter_val: Any, data: dict) -> Optional[List[dict]]:
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    params = {filter_col: f"eq.{filter_val}"}
     try:
-        resp = requests.get(url, headers=headers, params=params, timeout=10)
-        print(f"模糊搜索 status={resp.status_code}, 返回内容={resp.text}")
+        resp = requests.patch(
+            url, headers=_headers("return=representation"), params=params, json=data, timeout=10
+        )
         if resp.status_code >= 400:
-            print(f"模糊搜索接口报错：{resp.text}")
-            return []
+            st.error(f"UPDATE error {resp.status_code}: {resp.text}")
+            return None
         return resp.json()
     except Exception as e:
-        print(f"模糊搜索异常: {e}")
-        return []
+        st.error(f"UPDATE exception: {e}")
+        return None
 
-# 新增笔记
-def add_note(title: str, content: str, tags: str = ""):
+
+def supabase_delete(table: str, filter_col: str, filter_val: Any) -> bool:
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    params = {filter_col: f"eq.{filter_val}"}
+    try:
+        resp = requests.delete(url, headers=_headers(), params=params, timeout=10)
+        if resp.status_code >= 400:
+            st.error(f"DELETE error {resp.status_code}: {resp.text}")
+            return False
+        return True
+    except Exception as e:
+        st.error(f"DELETE exception: {e}")
+        return False
+
+
+# ---------------------- Notes API ----------------------
+def add_note(title: str, content: str, tags: str = "") -> Optional[int]:
     data = {
         "title": title.strip(),
         "content": content,
         "tags": tags.strip(),
     }
-    res_data = supabase_insert("notes", data)
-    return res_data[0]["id"] if res_data else None
+    res = supabase_insert("notes", data)
+    return res[0]["id"] if res else None
 
-# 查询全部笔记
-def get_notes():
-    note_list = supabase_select("notes", order_col="created_at", desc=True)
-    return note_list
 
-# 附件上传
-def add_file(note_id: int, file_name: str, file_type: str, file_data: bytes):
+def get_all_notes() -> List[dict]:
+    return supabase_select("notes", order_col="created_at", desc=True)
+
+
+def get_note(note_id: int) -> Optional[dict]:
+    res = supabase_select("notes", filter_col="id", filter_val=note_id)
+    return res[0] if res else None
+
+
+def update_note(note_id: int, title: str, content: str, tags: str = "") -> bool:
+    data = {
+        "title": title.strip(),
+        "content": content,
+        "tags": tags.strip(),
+    }
+    return supabase_update("notes", "id", note_id, data) is not None
+
+
+def delete_note(note_id: int) -> bool:
+    # Also delete related files first (optional but recommended)
+    files = get_files(note_id)
+    for f in files:
+        delete_file(f["id"])
+    return supabase_delete("notes", "id", note_id)
+
+
+# ---------------------- Files API ----------------------
+def add_file(note_id: int, file_name: str, file_type: str, file_bytes: bytes) -> Optional[int]:
+    # Store as base64 string (Supabase JSON column)
     data = {
         "note_id": note_id,
         "file_name": file_name,
-        "file_type": file_type,
-        "file_data": file_data,
+        "file_type": file_type or "application/octet-stream",
+        "file_data": base64.b64encode(file_bytes).decode("utf-8"),
     }
     res = supabase_insert("files", data)
     return res[0]["id"] if res else None
 
-def get_files(note_id: int):
-    """根据笔记id读取全部附件，返回字典列表"""
-    return supabase_select("files",filter_col="note_id", filter_val=note_id)
 
-def delete_file(file_id: int):
-    return supabase_delete("files", "id",file_id)
-
-# 修改笔记
-def update_note(note_id: int, title: str, content: str, tags: str = ""):
-    data = {
-        "title": title.strip(),
-        "content": content,
-        "tags": tags.strip()
-    }
-    supabase_update("notes", "id", note_id, data)
-
-# 删除笔记
-def delete_note(note_id: int):
-    return supabase_delete("notes", "id", note_id)
-
-def add_note(title: str, content: str, tags: str = ""):
-    data = {
-        "title": title.strip(),
-        "content": content,
-        "tags": tags.strip()
-    }
-    res_data = supabase_insert("notes", data)
-    return res_data[0]["id"] if res_data else None
-
-def get_all_notes():
-    note_list = supabase_select("notes", order_col="created_at", desc=True)
-    return note_list
-
-def get_note(note_id: int):
-    res_data = supabase_select("notes", eq_col="id", eq_val=note_id)
-    return res_data[0] if res_data else None
-
-def update_note(note_id: int, title: str, content: str, tags: str = ""):
-    data = {
-        "title": title.strip(),
-        "content": content,
-        "tags": tags.strip()
-    }
-    supabase_update("notes", "id", note_id, data)
-
-def delete_note(note_id: int):
-    supabase_delete("notes", "id", note_id)
-
-# ==================== 工具函数 ====================
-def get_all_notes():
-    note_list = supabase_select("notes", order_col="created_at", desc=True)
-    return note_list
-
-def get_note(note_id: int):
-    res_data = supabase_select("notes")
-    if not res_data:
-        return None
-    for item in res_data:
-        if item["id"] == note_id:
-            return item
-    return None
+def add_file_blob(note_id: int, uploaded_file) -> Optional[int]:
+    """Helper for Streamlit UploadedFile objects"""
+    return add_file(
+        note_id=note_id,
+        file_name=uploaded_file.name,
+        file_type=uploaded_file.type,
+        file_bytes=uploaded_file.getvalue(),
+    )
 
 
+def get_files(note_id: int) -> List[dict]:
+    return supabase_select("files", filter_col="note_id", filter_val=note_id)
 
-def add_note(title: str, content: str, tags: str = ""):
-    data = {
-        "title": title.strip(),
-        "content": content,
-        "tags": tags.strip()
-    }
-    res_data = supabase_insert("notes", data)
-    if res_data is None:
-        st.error("新增笔记失败！")
-        return None
-    return res_data[0]["id"]
 
-def search_by_title_exact(keyword: str):
-    url = f"{SUPABASE_URL}/rest/v1/notes"
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}"
-    }
-    params = {
-        "title": f"eq.{keyword}"
-    }
-    try:
-        resp = requests.get(url, headers=headers, params=params, timeout=10)
-        print(f"精确搜索返回：{resp.status_code}, {resp.text}") # 加打印，调试看返回
-        if resp.status_code >= 400:
-            return []
-        return resp.json()
-    except Exception as e:
-        print(f"精确搜索异常: {e}")
-        return []
+def delete_file(file_id: int) -> bool:
+    return supabase_delete("files", "id", file_id)
 
-def search_notes(keyword: str):
+
+# ---------------------- Search ----------------------
+def search_notes(keyword: str) -> List[dict]:
     if not keyword.strip():
-        return get_notes()
-        
+        return get_all_notes()
+
     url = f"{SUPABASE_URL}/rest/v1/notes"
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}"
-    }
-    # 正确or语法：title.ilike.%xxx%,content.ilike.%xxx%
-    kw = keyword.replace("%", r"\%")
+    kw = keyword.replace("%", r"\%").replace(",", " ")
     params = {
-        "or": f"title.ilike.%{kw}%,content.ilike.%{kw}%"
+        "or": f"(title.ilike.%{kw}%,content.ilike.%{kw}%)"
     }
     try:
-        resp = requests.get(url, headers=headers, params=params, timeout=10)
-        print(f"模糊搜索返回: {resp.status_code}, {resp.text}")
+        resp = requests.get(url, headers=_headers(), params=params, timeout=10)
         if resp.status_code >= 400:
+            st.error(f"Search error: {resp.text}")
             return []
         return resp.json()
     except Exception as e:
-        print(f"模糊搜索异常: {e}")
+        st.error(f"Search exception: {e}")
         return []
 
 
-def update_note(note_id: int, title: str, content: str, tags: str = ""):
-    data = {
-        "title": title.strip(),
-        "content": content,
-        "tags": tags.strip()
-    }
-    return supabase_update("notes", "id", note_id, data)
-
-def delete_note(note_id: int):
-    return supabase_delete("notes", "id", note_id)
+def search_by_title_exact(keyword: str) -> List[dict]:
+    return supabase_select("notes", filter_col="title", filter_val=keyword)
 
 
-# ==================== 侧边栏 ====================
+# ---------------------- UI Helpers ----------------------
+def render_file_preview(file_record: dict):
+    """Simple file preview / download"""
+    try:
+        raw = base64.b64decode(file_record["file_data"])
+    except Exception:
+        st.warning("无法解码附件数据")
+        return
+
+    name = file_record["file_name"]
+    mime = file_record.get("file_type", "application/octet-stream")
+
+    st.download_button(
+        label=f"⬇️ 下载 {name}",
+        data=raw,
+        file_name=name,
+        mime=mime,
+        key=f"dl_{file_record['id']}",
+    )
+
+    # Simple image preview
+    if mime.startswith("image/"):
+        st.image(raw, caption=name, use_container_width=True)
+
+
+# ==================== Sidebar ====================
 with st.sidebar:
     st.markdown("### 📝 本地智能笔记【云演示版】")
-    st.caption("⚠️ 演示环境，刷新数据全部丢失")
+    st.caption("⚠️ 演示环境，数据仅保存在 Supabase")
     mode = st.radio(
         "功能模式",
         ["对话新增", "全局目录", "精准检索", "编辑管理"],
-        index=0
+        index=0,
     )
     st.divider()
     total = len(get_all_notes())
     st.metric("笔记总数", total)
 
-# ==================== 主界面 ====================
-st.markdown('<div class="main-header">本地智能笔记管理系统</div>', unsafe_allow_html=True)
-st.caption("对话式输入 · 自动目录 · 全文检索 · 文件绑定 | ⚠️云演示，不持久存储")
+
+# ==================== Main ====================
+st.markdown("## 本地智能笔记管理系统")
+st.caption("对话式输入 · 自动目录 · 全文检索 · 文件绑定")
 
 # ---------- 模式1：对话新增 ----------
 if mode == "对话新增":
     st.subheader("💬 对话式新增笔记")
     with st.form("new_note_form", clear_on_submit=True):
-        title = st.text_input("标题（必填）", placeholder="例如：术前谈话模板 / 高血压用药提示")
-        content = st.text_area("正文内容（支持 Markdown）", height=220,
-                               placeholder="在此输入笔记内容...\n\n支持 **加粗**、*斜体*、列表、代码块等 Markdown 语法")
-        tags = st.text_input("标签（可选，用逗号分隔）", placeholder="例如：模板,术前,外科 或 学习,心血管")
-        uploaded_files = st.file_uploader("绑定附件（可多选，任意格式）",
-                                          accept_multiple_files=True,
-                                          type=None)
+        title = st.text_input("标题（必填）", placeholder="例如：术前谈话模板")
+        content = st.text_area("正文内容（支持 Markdown）", height=220)
+        tags = st.text_input("标签（可选，用逗号分隔）")
+        uploaded_files = st.file_uploader("绑定附件（可多选）", accept_multiple_files=True)
         submitted = st.form_submit_button("保存笔记", type="primary", use_container_width=True)
+
         if submitted:
-            if not title.strip():
-                if not content.strip():
-                    st.error("标题和内容不能同时为空")
-                else:
-                    title = content.strip().replace('\n', ' ').replace('\r', '')[:20]
-            if title.strip():
+            if not title.strip() and not content.strip():
+                st.error("标题和内容不能同时为空")
+            else:
+                if not title.strip():
+                    title = content.strip().replace("\n", " ")[:30]
                 note_id = add_note(title, content, tags)
-                if uploaded_files:
-                    for f in uploaded_files:
-                        add_file_blob(note_id, f)
-                st.success(f"✅ 笔记已保存（ID: {note_id}）")
-                st.balloons()
+                if note_id:
+                    if uploaded_files:
+                        for f in uploaded_files:
+                            add_file_blob(note_id, f)
+                    st.success(f"✅ 笔记已保存（ID: {note_id}）")
+                    st.balloons()
+                else:
+                    st.error("保存失败")
 
 # ---------- 模式2：全局目录 ----------
 elif mode == "全局目录":
@@ -347,52 +260,49 @@ elif mode == "全局目录":
     else:
         all_tags = set()
         for n in notes:
-            tag_str = n.get("tags", "")  # get兜底，tags为空/不存在不会崩
-            if tag_str:
-                for t in tag_str.split(","):
-                    all_tags.add(t.strip())
-        selected_tag = st.selectbox("按标签筛选（可选）", ["全部"] + sorted(list(all_tags)))
-        for i,note in enumerate(notes):
-            note_id=note["id"]
-            title=note["title"]
-            content=note["content"]
-            tags=note["tags"]
-            created_at=note["created_at"]
-            updated_at=note["updated_at"]
-            if selected_tag != "全部" and (not tags or selected_tag not in [t.strip() for t in tags.split(",")]):
+            if n.get("tags"):
+                all_tags.update(t.strip() for t in n["tags"].split(",") if t.strip())
+
+        selected_tag = st.selectbox("按标签筛选", ["全部"] + sorted(all_tags))
+
+        for note in notes:
+            tags = note.get("tags") or ""
+            if selected_tag != "全部" and selected_tag not in [t.strip() for t in tags.split(",")]:
                 continue
-            with st.container():
-                st.markdown(f'<div class="note-card">', unsafe_allow_html=True)
+
+            with st.container(border=True):
                 col1, col2 = st.columns([8, 2])
                 with col1:
-                    st.markdown(f'<div class="note-title">{title}</div>', unsafe_allow_html=True)
-                    tag_html = ""
-                    if tags:
-                        for t in tags.split(","):
-                            tag_html += f'<span class="tag">{t.strip()}</span>'
-                    st.markdown(f'<div class="note-meta">创建: {note["created_at"]} | 更新: {note["updated_at"]} {tag_html}</div>', unsafe_allow_html=True)
-                    preview = content[:180] + "..." if len(content) > 180 else content
-                    st.markdown(preview)
-                    #files = get_files(note_id)
-                    #if files:
-                    #    st.caption(f"📎 附件 {len(files)} 个")
+                    st.markdown(f"### {note['title']}")
+                    st.caption(
+                        f"创建: {note.get('created_at', '')} | "
+                        f"更新: {note.get('updated_at', '')} | "
+                        f"标签: {tags or '无'}"
+                    )
+                    preview = (note.get("content") or "")[:200]
+                    st.markdown(preview + ("..." if len(note.get("content") or "") > 200 else ""))
                 with col2:
-                    if st.button("查看详情",key=f"view_{i}_{note_id}"):
-                        st.session_state["view_id"] = note_id
-                st.markdown('</div>', unsafe_allow_html=True)
+                    if st.button("查看详情", key=f"view_{note['id']}"):
+                        st.session_state["view_id"] = note["id"]
+
         if "view_id" in st.session_state:
             note = get_note(st.session_state["view_id"])
             if note:
                 st.divider()
                 st.subheader(f"📄 {note['title']}")
-                st.caption(f"创建: {note['created_at']} | 更新: {note['updated_at']} | 标签: {note['tags'] or '无'}")
-                st.markdown(note['content'] or "_无正文_")
-                files = get_files(note['id'])
+                st.caption(
+                    f"创建: {note.get('created_at')} | 更新: {note.get('updated_at')} | "
+                    f"标签: {note.get('tags') or '无'}"
+                )
+                st.markdown(note.get("content") or "_无正文_")
+
+                files = get_files(note["id"])
                 if files:
                     st.markdown("**附件：**")
-                    for fid, fname, fbytes, ftype, _ in files:
-                        with st.expander(fname):
-                            render_file_preview(fbytes, fname, ftype)
+                    for f in files:
+                        with st.expander(f["file_name"]):
+                            render_file_preview(f)
+
                 if st.button("关闭详情"):
                     del st.session_state["view_id"]
                     st.rerun()
@@ -402,30 +312,22 @@ elif mode == "精准检索":
     st.subheader("🔍 精准检索")
     col1, col2 = st.columns([3, 1])
     with col1:
-        keyword = st.text_input("输入标题关键词或正文关键词", placeholder="支持模糊搜索，回车即可")
+        keyword = st.text_input("输入关键词", placeholder="支持模糊搜索")
     with col2:
-        exact = st.checkbox("标题精确匹配", value=False)
+        exact = st.checkbox("标题精确匹配")
+
     if keyword:
-        if exact:
-            results = search_by_title_exact(keyword)
-        else:
-            results = search_notes(keyword)
+        results = search_by_title_exact(keyword) if exact else search_notes(keyword)
         st.write(f"找到 **{len(results)}** 条结果")
         for note in results:
-            note_id=note["id"]
-            title=note["title"]
-            content=note["content"]
-            tags=note["tags"]
-            created_at=note["created_at"]
-            updated_at=note["updated_at"]
-            with st.expander(f"📌 {title} （更新于 {updated_at}）"):
-                st.caption(f"标签: {tags or '无'} | 创建: {created_at}")
-                st.markdown(content or "_无正文_")
-                files = get_files(note_id)
+            with st.expander(f"📌 {note['title']} （更新于 {note.get('updated_at', '')}）"):
+                st.caption(f"标签: {note.get('tags') or '无'} | 创建: {note.get('created_at')}")
+                st.markdown(note.get("content") or "_无正文_")
+                files = get_files(note["id"])
                 if files:
                     st.markdown("**附件：**")
-                    for fid, fname, fbytes, ftype, _ in files:
-                        render_file_preview(fbytes, fname, ftype)
+                    for f in files:
+                        render_file_preview(f)
 
 # ---------- 模式4：编辑管理 ----------
 elif mode == "编辑管理":
@@ -434,55 +336,60 @@ elif mode == "编辑管理":
     if not notes:
         st.info("暂无笔记")
     else:
-        options = {f"{n['title']} (ID:{n['id']})": n['id'] for n in notes}
+        options = {f"{n['title']} (ID:{n['id']})": n["id"] for n in notes}
         selected = st.selectbox("选择要操作的笔记", list(options.keys()))
         note_id = options[selected]
         note_data = get_note(note_id)
+
         if note_data:
             title_edit = st.text_input("笔记标题", value=note_data["title"])
-            content_edit = st.text_area("笔记内容", value=note_data["content"])
-            tags_edit = st.text_input("标签", value=note_data.get("tags",""))
-            if st.button("保存修改"):
-                update_note(note_id, title_edit, content_edit, tags_edit)
-                st.success("修改已保存")
-                st.rerun()
+            content_edit = st.text_area("笔记内容", value=note_data.get("content") or "", height=250)
+            tags_edit = st.text_input("标签", value=note_data.get("tags") or "")
+
+            col_save, col_del = st.columns(2)
+            with col_save:
+                if st.button("💾 保存修改", type="primary"):
+                    if update_note(note_id, title_edit, content_edit, tags_edit):
+                        st.success("修改已保存")
+                        st.rerun()
+            with col_del:
+                confirm_del = st.checkbox("确认永久删除本条笔记")
+                if confirm_del and st.button("🗑️ 删除笔记", type="secondary"):
+                    if delete_note(note_id):
+                        st.success("笔记已删除")
+                        st.rerun()
 
             st.divider()
-            confirm_del = st.checkbox("⚠️ 确认永久删除本条笔记")
-            if confirm_del and st.button("🗑️ 删除笔记", type="secondary"):
-                delete_note(note_id)
-                st.success("笔记已删除！")
+            st.markdown("**当前附件**")
+            files = get_files(note_id)
+            if files:
+                for f in files:
+                    c1, c2, c3 = st.columns([5, 2, 2])
+                    with c1:
+                        st.write(f["file_name"])
+                    with c2:
+                        try:
+                            raw = base64.b64decode(f["file_data"])
+                            st.download_button(
+                                "下载",
+                                data=raw,
+                                file_name=f["file_name"],
+                                mime=f.get("file_type"),
+                                key=f"dl_{f['id']}",
+                            )
+                        except Exception:
+                            st.write("解码失败")
+                    with c3:
+                        if st.button("删除附件", key=f"del_{f['id']}"):
+                            if delete_file(f["id"]):
+                                st.rerun()
+            else:
+                st.write("暂无附件")
+
+            st.markdown("**追加附件**")
+            new_files = st.file_uploader("选择文件", accept_multiple_files=True, key="append_files")
+            if new_files and st.button("上传附件"):
+                for f in new_files:
+                    add_file_blob(note_id, f)
+                st.success("附件已添加")
                 st.rerun()
-  
-        st.markdown("**当前附件**")
-        files = get_files(note_id)
-        if files:
-            for f in files:
-                c1, c2, c3 = st.columns([4,2,2])
-                with c1:
-                    st.write(f["file_name"])
-                with c2:
-                    # 下载按钮
-                    st.download_button(
-                        label="下载",
-                        data=f["file_data"],
-                        file_name=f["file_name"],
-                        mime=f["file_type"],
-                        key=f"dl_{f['id']}"
-                      )
-                with c3:
-                    if st.button("删除附件", key=f"del_{f['id']}"):
-                         delete_file(f["id"])
-                         st.rerun()
-        else:
-            st.write("暂无附件")
-
-st.markdown("**追加附件**")
-new_files = st.file_uploader("选择文件", accept_multiple_files=True, key="append_files")
-if new_files and st.button("上传附件"):
-    for f in new_files:
-        add_file_blob(note_id, f)
-    st.success("附件已添加")
-    st.rerun()
-
-st.divider()
